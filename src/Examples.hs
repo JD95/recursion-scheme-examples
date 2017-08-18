@@ -1,43 +1,72 @@
+{-# LANGUAGE DeriveFunctor, OverloadedStrings, PatternSynonyms #-}
 module Examples where
 
-import Prelude ()
+import qualified Prelude as P
 import Protolude
 import Control.Monad.Free
 import Control.Comonad.Cofree
 import Data.Functor.Foldable
 
+data Tree_ v a = Node v a a
+               | Leaf v
+                 deriving (Functor)
+
+type Tree v = Fix (Tree_ v)
+
+node v l r = Fix (Node v l r)
+
+pattern NodeF v l r = Fix (Node v l r)
+
+leaf v = Fix (Leaf v)
+
+pattern LeafF v = Fix (Leaf v)
+
+exampleTree :: Tree Int
+exampleTree = node 1 (leaf 2) (node 3 (leaf 4) (node 5 (leaf 6) (leaf 7)))
 
 -- | Catamorphisms are simple folds.
---   Here were just add up the elements.
-cataExample :: [Int] -> Int
+--   Here we get the height of the tree
+--   by adding up the nodes
+cataExample :: Tree Int -> Int
 cataExample = cata f
-    where f :: ListF Int Int -> Int
-          f Nil = 0
-          f (Cons prev current) = prev + current
+    where f :: Tree_ Int Int -> Int
+          f (Leaf n) = 1
+          f (Node _ l _) = l + 1
 
+height = cataExample
 
--- | Paramorphisms are folds, but we get access
---   to original next chunk of the list and our
---   next value.
-paraExample :: [Int] -> Int
+-- | Paramorphisms are catas, but we get access
+--   to original structure of that term along with
+--   it's result. Here, we use information about
+--   the original to color the values of the nodes.
+paraExample :: Tree Int -> [Color Int]
 paraExample = para f
-    where f :: ListF Int ([Int], Int) -> Int
-          f Nil = 0
-          f (Cons prev (orig, current)) = 5
+    where f :: Tree_ Int (Tree Int, [Color Int]) -> [Color Int]
+          f (Leaf v) = [Yellow v]
+          f (Node v l (LeafF _, r)) =  snd l <> [Green v] <> r
+          f (Node v l r) = snd l <> [Red v] <> snd r
 
+data Color a = Yellow a | Green a | Red a deriving (Show, Eq, Ord)
+
+grouplayers =  sort . paraExample
 
 -- | Zygomorphisms are folds with a helper function.
 --   This lets us run the function f on our current
 --   value before determining the next value with g.
-zygoExample :: [Int] -> Int
+zygoExample :: Tree Int -> Int
 zygoExample = zygo f g
-    where f :: ListF Int Bool -> Bool
-          f Nil = True
-          f (Cons n prev) = even n && prev
+    where f :: Tree_ Int Children -> Children
+          f (Leaf n) = Children 1
+          f (Node _ (Children m) (Children n)) = Children (m + n)
 
-          g :: ListF Int (Bool, Int) -> Int
-          g Nil = 0
-          g (Cons prev (b, orig)) = 5
+          g :: Tree_ Int (Children, Int) -> Int
+          g (Leaf n) = n
+          g (Node n (lKids,l) (rKids,r))
+            | lKids > rKids = l
+            | lKids < rKids = r
+            | otherwise = n
+
+newtype Children = Children Int deriving (Show, Eq, Ord)
 
 -- | Histomorphisms are folds but with previous answers
 --   available in the form of a cofree structure.
