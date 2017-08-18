@@ -50,9 +50,11 @@ data Color a = Yellow a | Green a | Red a deriving (Show, Eq, Ord)
 
 grouplayers =  sort . paraExample
 
--- | Zygomorphisms are folds with a helper function.
---   This lets us run the function f on our current
---   value before determining the next value with g.
+-- | Zygomorphisms are folds with a helper function
+--   that builds up results in parallel to the main
+--   folding. In this case we use the helper function
+--   to return either the deepest leaf, or the deepest
+--   node in our tree.
 zygoExample :: Tree Int -> Int
 zygoExample = zygo f g
     where f :: Tree_ Int Children -> Children
