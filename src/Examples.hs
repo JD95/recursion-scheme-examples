@@ -7,6 +7,8 @@ import Control.Monad.Free
 import Control.Comonad.Cofree
 import Data.Functor.Foldable
 import Data.List
+import Data.Numbers.Primes
+import qualified Data.Tree as T
 
 data Tree_ v a = Node v a a
                | Leaf v
@@ -25,9 +27,9 @@ pattern LeafF v = Fix (Leaf v)
 exampleTree :: Tree Int
 exampleTree = node 1 (leaf 2) (node 3 (leaf 4) (node 5 (leaf 6) (leaf 7)))
 
--- | Catamorphisms are simple folds.
+-- | Catamorphisms are simple folds
 --   Here we get the height of the tree
---   by adding up the nodes
+--   by adding up the nodes.
 cataExample :: Tree Int -> Int
 cataExample = cata f
     where f :: Tree_ Int Int -> Int
@@ -36,13 +38,21 @@ cataExample = cata f
 
 height = cataExample
 
+unfixTree :: Tree  a -> T.Tree a
+unfixTree = cata f
+    where f :: Tree_ a (T.Tree a) -> T.Tree a
+          f (Leaf a) = T.Node a []
+          f (Node a l r) = T.Node a [l, r]          
+
+printTree :: Show a => Tree a -> IO ()
+printTree = putStrLn . T.drawTree . fmap show . unfixTree
+
 partitionOn :: Eq b => (a -> b) -> (b -> Bool) -> [a] -> ([a], [a])
 partitionOn p t = cata (f t p)
     where f t p Nil = ([],[])
           f t p (Cons a (pass, fail))
             | t (p a) = (a:pass, fail)
             | otherwise = (pass, a:fail)
-
 
 -- | Paramorphisms are catas, but we get access
 --   to original structure of that term along with
@@ -78,7 +88,6 @@ zygoExample = zygo f g
             | otherwise = n
 
 newtype Children = Children Int deriving (Show, Eq, Ord)
-
 
 -- | Histomorphisms are folds but with previous answers
 --   available in the form of a cofree structure.
@@ -120,10 +129,15 @@ groupOn p = apo (f p)
                       in Cons (h:match) (Right rest)
 
 -- | Futumorphisms are unfolds which expand out through
---   many branches at once. Imagine a tree exapanding.
-futuExample :: Int -> [Int]
+--   many branches at once.
+--   An example is branching out a factor tree from a
+--   starting number.
+futuExample :: Int -> Tree Int
 futuExample = futu f
-    where f :: Int -> ListF Int (Free (ListF Int) Int)
-          f n = Nil
+    where f :: Int -> Tree_ Int (Free (Tree_ Int) Int)
+          f n | isPrime n = Leaf n
+              | n == 1 = Leaf 1
+              | otherwise = Node n (Pure a) (Pure $ n `div` a)
+                where a = fromMaybe 1 (find (\x -> n `mod` x  == 0) [2..n]) 
 
 
