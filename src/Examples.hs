@@ -89,12 +89,13 @@ histoExample = histo f
           f (Node v (l :< branchL) (r :< branchR)) = v          
 
 -- | Anamorphisms are simple unfolds.
---   Here we create an infinite list of
---   numbers from n to infinity.
-anaExample :: Int -> [Int]
+--   Here we create a tree with each layer
+--   having node values +1 of the previous
+--   layer base on some starting seed.
+anaExample :: Int -> Tree Int
 anaExample = ana f
-    where f :: Int -> ListF Int Int
-          f n = Cons n (n + 1)
+    where f :: Int -> Tree_ Int Int
+          f n = Node n (n + 1) (n + 1)
 
 -- | Apomorphisms unfold, either creating a single
 --   value or an entire branch. In this case, choosing
@@ -118,7 +119,7 @@ groupOn p = apo (f p)
           f p (h:t) = let (match, rest) = partition ((==) (p h) . p) t
                       in Cons (h:match) (Right rest)
 
--- | Futumorpisms are unfolds which expand out through
+-- | Futumorphisms are unfolds which expand out through
 --   many branches at once. Imagine a tree exapanding.
 futuExample :: Int -> [Int]
 futuExample = futu f
