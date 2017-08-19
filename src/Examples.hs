@@ -9,6 +9,7 @@ import Data.Functor.Foldable
 import Data.List
 import Data.Numbers.Primes
 import qualified Data.Tree as T
+import Numeric.Natural
 
 data Tree_ v a = Node v a a
                | Leaf v
@@ -28,6 +29,7 @@ exampleTree :: Tree Int
 exampleTree = node 1 (leaf 2) (node 3 (leaf 4) (node 5 (leaf 6) (leaf 7)))
 
 -- | Catamorphisms are simple folds
+--
 --   Here we get the height of the tree
 --   by adding up the nodes.
 cataExample :: Tree Int -> Int
@@ -128,6 +130,7 @@ apoExample = apo f
 -- | In this example we generate a list of lists
 --   by iterating on smaller and smaller chunks of
 --   a list.
+--
 --   This represents the general pattern of passing
 --   the "rest" of a list off to a recursive call
 --   after processing some inital portion.
@@ -138,6 +141,21 @@ groupOn p = apo (f p)
           f p (h:t) = let (match, rest) = partition ((==) (p h) . p) t
                       in Cons (h:match) (Right rest)
 
-
+-- | Futumorphisms are unfolds that let us expand
+--   many layers at once, instead of single layers
+--   like a apomorphisms. Using project, we can also
+--   make use of future values.
+--
+--   In this example, we extrapolate down the list and
+--   only take the odd elements.
+futuExample :: [a] -> [a]
+futuExample = futu f
+  where f :: [a] -> ListF a (Free (ListF a) [a])
+        f as = case project as of
+          Nil -> Nil
+          Cons x s -> Cons x $ do
+            pure $ case project s of
+              Nil -> s
+              Cons _ t -> t
 
 
