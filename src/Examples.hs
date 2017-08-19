@@ -6,6 +6,7 @@ import Protolude
 import Control.Monad.Free
 import Control.Comonad.Cofree
 import Data.Functor.Foldable
+import Data.List
 
 data Tree_ v a = Node v a a
                | Leaf v
@@ -34,6 +35,14 @@ cataExample = cata f
           f (Node _ l _) = l + 1
 
 height = cataExample
+
+partitionOn :: Eq b => (a -> b) -> (b -> Bool) -> [a] -> ([a], [a])
+partitionOn p t = cata (f t p)
+    where f t p Nil = ([],[])
+          f t p (Cons a (pass, fail))
+            | t (p a) = (a:pass, fail)
+            | otherwise = (pass, a:fail)
+
 
 -- | Paramorphisms are catas, but we get access
 --   to original structure of that term along with
@@ -70,13 +79,14 @@ zygoExample = zygo f g
 
 newtype Children = Children Int deriving (Show, Eq, Ord)
 
+
 -- | Histomorphisms are folds but with previous answers
 --   available in the form of a cofree structure.
-histoExample :: [Int] -> Int
+histoExample :: Tree Int -> Int
 histoExample = histo f
-    where f :: ListF Int (Cofree (ListF Int) Int) -> Int
-          f Nil = 0
-          f (Cons prev (next :< others)) = prev + next
+    where f :: Tree_ Int (Cofree (Tree_ Int) Int) -> Int
+          f (Leaf n) = n
+          f (Node v (l :< branchL) (r :< branchR)) = v          
 
 -- | Anamorphisms are simple unfolds.
 --   Here we create an infinite list of
@@ -95,6 +105,18 @@ apoExample = apo f
           f n | even n = Cons n (Left [n, n])
               | otherwise = Cons n (Right $ n * 3)
 
+-- | In this example we generate a list of lists
+--   by iterating on smaller and smaller chunks of
+--   a list.
+--   This represents the general pattern of passing
+--   the "rest" of a list off to a recursive call
+--   after processing some inital portion.
+groupOn :: Eq b => (a -> b) -> [a] -> [[a]]
+groupOn p = apo (f p)
+    where f :: Eq b => (a -> b) -> [a] -> ListF [a] (Either [[a]] [a])
+          f _ [] = Nil
+          f p (h:t) = let (match, rest) = partition ((==) (p h) . p) t
+                      in Cons (h:match) (Right rest)
 
 -- | Futumorpisms are unfolds which expand out through
 --   many branches at once. Imagine a tree exapanding.
