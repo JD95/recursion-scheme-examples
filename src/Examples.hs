@@ -106,6 +106,16 @@ anaExample = ana f
     where f :: Int -> Tree_ Int Int
           f n = Node n (n + 1) (n + 1)
 
+-- | An example is branching out a factor tree from a
+--   starting number.
+factorTree :: Int -> Tree Int
+factorTree = ana f
+     where f :: Int -> Tree_ Int Int
+           f n | isPrime n = Leaf n
+               | n == 1 = Leaf 1
+               | otherwise = Node n a (n `div` a)
+                 where a = fromMaybe 1 (find (\x -> n `mod` x  == 0) [2..n]) 
+
 -- | Apomorphisms unfold, either creating a single
 --   value or an entire branch. In this case, choosing
 --   left will stop the generation.
@@ -128,16 +138,6 @@ groupOn p = apo (f p)
           f p (h:t) = let (match, rest) = partition ((==) (p h) . p) t
                       in Cons (h:match) (Right rest)
 
--- | Futumorphisms are unfolds which expand out through
---   many branches at once.
---   An example is branching out a factor tree from a
---   starting number.
-futuExample :: Int -> Tree Int
-futuExample = futu f
-    where f :: Int -> Tree_ Int (Free (Tree_ Int) Int)
-          f n | isPrime n = Leaf n
-              | n == 1 = Leaf 1
-              | otherwise = Node n (Pure a) (Pure $ n `div` a)
-                where a = fromMaybe 1 (find (\x -> n `mod` x  == 0) [2..n]) 
+
 
 
