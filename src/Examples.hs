@@ -141,12 +141,24 @@ groupOn p = apo (f p)
           f p (h:t) = let (match, rest) = partition ((==) (p h) . p) t
                       in Cons (h:match) (Right rest)
 
--- | Futumorphisms are unfolds that let us expand
---   many layers at once, instead of single layers
---   like a apomorphisms. Using project, we can also
---   make use of future values.
---
---   In this example, we extrapolate down the list and
+-- | Futumorphisms are useful when the recursion needs
+--   to look ahead in the structure. They are unfolds
+--   that let us expand many layers at once, instead
+--   of single layers like a apomorphisms. Using
+--   project, we can make use of future values.
+
+
+-- | Here, we can implement the init function which
+--   returns all be the last element of a list.
+futuInit :: [a] -> [a]
+futuInit = futu f
+  where f :: [a] -> ListF a (Free (ListF a) [a])
+        f  as = case project as of
+                  Nil -> Nil
+                  Cons x [] -> Nil
+                  Cons x s -> Cons x (pure s)
+
+-- | In this example, we extrapolate down the list and
 --   only take the odd elements.
 futuExample :: [a] -> [a]
 futuExample = futu f
@@ -157,5 +169,6 @@ futuExample = futu f
             pure $ case project s of
               Nil -> s
               Cons _ t -> t
+
 
 
