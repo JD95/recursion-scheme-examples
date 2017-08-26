@@ -141,6 +141,19 @@ groupOn p = apo (f p)
           f p (h:t) = let (match, rest) = partition ((==) (p h) . p) t
                       in Cons (h:match) (Right rest)
 
+-- | The moves for the towers of hanoi can be represented
+--   as a hylo morphism. The anamorphism builds up the tree
+--   and the catamorphism tears down the tree into a list.
+hyloHanoi :: Int -> [Int]
+hyloHanoi = hylo g f
+  where f :: Int -> Tree_ Int Int
+        f 1 = Leaf 1
+        f n = Node n (n - 1) (n - 1)
+
+        g :: Tree_ Int [Int] -> [Int]
+        g (Leaf n) = [n]
+        g (Node n l r) = l ++ [n] ++ r
+
 -- | Futumorphisms are useful when the recursion needs
 --   to look ahead in the structure. They are unfolds
 --   that let us expand many layers at once, instead
