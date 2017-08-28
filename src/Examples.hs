@@ -1,3 +1,5 @@
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE DeriveFunctor, OverloadedStrings, PatternSynonyms #-}
 module Examples where
 
@@ -127,13 +129,20 @@ apoExample = apo f
           f n | even n = Cons n (Left [n, n])
               | otherwise = Cons n (Right $ n * 3)
 
--- | In this example we generate a list of lists
---   by iterating on smaller and smaller chunks of
---   a list.
---
---   This represents the general pattern of passing
---   the "rest" of a list off to a recursive call
---   after processing some inital portion.
+anaRepeat :: a -> [a]
+anaRepeat = ana f
+  where f :: a -> ListF a a
+        f a = Cons a a
+
+gapoReplicate :: Int -> a -> [a]
+gapoReplicate n a = gapo (g a) f a
+  where f :: a -> ListF a (Either Int a)
+        f a = Cons a (Left 0)
+
+        g :: a -> Int -> ListF a Int
+        g a m | m == n = Nil
+              | otherwise = Cons a (m + 1)
+
 groupOn :: Eq b => (a -> b) -> [a] -> [[a]]
 groupOn p = apo (f p)
     where f :: Eq b => (a -> b) -> [a] -> ListF [a] (Either [[a]] [a])
