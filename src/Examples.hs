@@ -110,6 +110,8 @@ anaExample = ana f
     where f :: Int -> Tree_ Int Int
           f n = Node n (n + 1) (n + 1)
 
+
+
 -- | An example is branching out a factor tree from a
 --   starting number.
 factorTree :: Int -> Tree Int
@@ -133,6 +135,25 @@ anaRepeat :: a -> [a]
 anaRepeat = ana f
   where f :: a -> ListF a a
         f a = Cons a a
+
+data Term = A | C Term Term deriving (Show)
+
+grow :: Term -> Term -> Term
+grow c d = C c d
+
+rule :: Term -> Maybe Term
+rule A = Nothing
+rule (C A A) = Nothing
+rule (C a b) = Just b
+
+-- apoTheorem :: Term -> [Term]
+-- apoTheorem = apo f 
+--   where f :: Term -> ListF Term (Either [Term] Term)
+--         f A = Cons A (Right $ grow A A)
+--         f (C A A) = Cons (C A A) (Right $ grow (C A A) (C A A))
+--         f term = case rule term of
+--           Just t -> Cons t (Right $ grow t t)
+--           Nothing -> Cons term (Right $ grow t t)
 
 gapoReplicate :: Int -> a -> [a]
 gapoReplicate n a = gapo (g a) f a
@@ -211,5 +232,13 @@ futuExample = futu f
               Nil -> s
               Cons _ t -> t
 
-
-
+-- | An implementation of a memoized list of fibbonaci numbers
+futuFibs :: [Natural]
+futuFibs = futu f [0,1]
+  where f :: [Natural] -> ListF Natural (Free (ListF Natural) [Natural])
+        f as = case project as of
+          Nil -> Nil
+          Cons x s -> Cons x $ do
+            pure $ case project s of
+              Nil -> s
+              Cons y t -> (y:t) ++ [x + y] 
