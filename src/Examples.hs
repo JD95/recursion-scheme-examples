@@ -237,8 +237,6 @@ futuFibs :: [Natural]
 futuFibs = futu f [0,1]
   where f :: [Natural] -> ListF Natural (Free (ListF Natural) [Natural])
         f as = case project as of
-          Nil -> Nil
-          Cons x s -> Cons x $ do
+          Cons x s -> Cons x $ 
             pure $ case project s of
-              Nil -> s
-              Cons y t -> (y:t) ++ [x + y] 
+              Cons y _ -> s ++ [x + y] 
