@@ -21,6 +21,7 @@ library
                      , protolude
                      , recursion-schemes
                      , free
+                     , comonad
                      , primes
                      , containers
 		     
