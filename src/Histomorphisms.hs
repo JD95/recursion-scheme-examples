@@ -6,18 +6,22 @@
 
 module Histomorphisms where
 
+import           Debug.Trace
+
 import           Control.Comonad
-import           Control.Comonad.Cofree
+import           Control.Comonad.Cofree       (Cofree)
+import           Control.Comonad.Trans.Cofree (CofreeF (..))
 import           Control.Monad
 import           Control.Monad.Free
 import           Data.Functor.Compose
 import           Data.Functor.Foldable
 import           Data.List
+import           Data.List.NonEmpty
 import           Data.Numbers.Primes
-import qualified Data.Tree              as T
+import qualified Data.Tree                    as T
 import           Numeric.Natural
-import qualified Prelude                as P
-import           Protolude
+import qualified Prelude                      as P
+import           Protolude                    hiding (trace)
 
 data Item = Item
   { value  :: Double
@@ -30,31 +34,23 @@ instance Eq Item where
 instance Ord Item where
   a <= b = value a <= value b
 
-addValue :: Double -> Item -> Item -> Maybe Item
-addValue maxWeight a b = do
-   guard (weight a + weight b <= maxWeight)
-   pure $ Item (value a + value b) (weight a + weight b)
-
-addToHistory :: Double -> Item -> Cofree (ListF Item) (Maybe Item) -> Maybe Item
-addToHistory maxWeight item =
-  extract . extend f . fmap (addValue maxWeight item =<<)
+knapsack :: Double -> [Item] -> Maybe Item
+knapsack maxWeight = histo f
   where
-    f :: Cofree (ListF Item) (Maybe Item) -> Maybe Item
-    f (v :< Nil) = undefined
+      addValue :: Item -> Item -> Maybe Item
+      addValue a b
+        | (weight a + weight b) <= maxWeight =
+            Just $ Item (value a + value b) (weight a + weight b)
+        | weight a <= weight b = Just b
+        | weight a > weight b = Just a
+        | otherwise = Nothing
 
-maxCheck maxWeight item =
-       guard (weight item <= maxWeight) *> Just item
+      f :: ListF Item (Cofree (ListF Item) (Maybe Item)) -> Maybe Item
+      f Nil              = Nothing
+      f (Cons item prev) = cata (g item) $ fmap (addValue item =<<) prev
 
-
-
--- knapsack :: Double -> [Item] -> Maybe Item
--- knapsack maxWeight = histo f
---   where
---     f :: ListF Item (Cofree (ListF Item) (Maybe Item)) -> Maybe Item
---     f Nil = Nothing
---     f (Cons item (_ :< Nil)) = maxCheck maxWeight item
---     f (Cons item (rt :< (Cons _ (lt :< _)))) = do
---       let left = (addValue maxWeight item =<< lt) <|> lt
---       let right = (addValue maxWeight item =<< rt) <|> rt
---       let self = maxCheck maxWeight item
---       liftA2 max left right <|> left <|> right <|> self
+      g :: Item -> CofreeF (ListF Item) (Maybe Item) (Maybe Item) -> Maybe Item
+      g item (_ :< Nil) = guard (weight item <= maxWeight) *> Just item
+      g item (l :< (Cons v r)) =
+        let current = addValue item v
+        in fmap maximum . nonEmpty . catMaybes $ [l, current, r]
