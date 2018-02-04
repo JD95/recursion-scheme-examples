@@ -1,27 +1,47 @@
-name:                recursion
-version:             0.1.0.0
--- synopsis:
--- description:
-homepage:            https://github.com/jd95/recursion#readme
-license:             BSD3
-license-file:        LICENSE
-author:              Jeff
-maintainer:          jeffreydwyer95@outlook.com
-copyright:           MIT
-category:            Web
-build-type:          Simple
-cabal-version:       >=1.10
-extra-source-files:  README.md
+-- This file has been generated from package.yaml by hpack version 0.20.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: bdd15f05514b0c6b70e2aaa82a5661771b785e227cf3b189a532b80a0bfb3dd2
+
+name:           recursion
+version:        0.1.0.0
+category:       Web
+homepage:       https://github.com/jd95/recursion#readme
+author:         Jeff
+maintainer:     jeffreydwyer95@outlook.com
+copyright:      MIT
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
+
+extra-source-files:
+    README.md
 
 library
-  hs-source-dirs:      src
-  exposed-modules:     Examples
-  default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
-                     , protolude
-                     , recursion-schemes
-                     , free
-                     , comonad
-                     , primes
-                     , containers
-		     
+  hs-source-dirs:
+      src
+  ghc-options: -Wall
+  build-depends:
+      base >=4.7 && <5
+    , comonad
+    , containers
+    , free
+    , primes
+    , protolude
+    , recursion-schemes
+  exposed-modules:
+      Cata
+      Para
+      Histo
+      Zygo
+      Ana
+      Apo
+      Gapo
+      Futu
+      Utilities
+  other-modules:
+      Hylo
+      Paths_recursion
+  default-language: Haskell2010

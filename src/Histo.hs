@@ -4,7 +4,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications    #-}
 
-module Histomorphisms where
+module Histo where
 
 import           Debug.Trace
 
@@ -42,3 +42,4 @@ knapsack maxWeight = histo f
 
     f Nil              = Nothing
     f (Cons item prev) = cata (g item) $ fmap (addValue item =<<) prev
+

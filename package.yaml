@@ -1,0 +1,38 @@
+name: recursion
+version: '0.1.0.0'
+category: Web
+author: Jeff
+maintainer: jeffreydwyer95@outlook.com
+copyright: MIT
+license: BSD3
+homepage: https://github.com/jd95/recursion#readme
+extra-source-files:
+- README.md
+
+dependencies:
+- base >=4.7 && <5
+- protolude
+- recursion-schemes
+- free
+- comonad
+- primes
+- containers
+
+ghc-options:
+- -Wall
+
+
+library:
+  source-dirs: src
+  exposed-modules:
+  - Cata
+  - Para
+  - Histo
+  - Zygo
+  - Ana
+  - Apo
+  - Gapo
+  - Futu
+  - Utilities
+
+ 
