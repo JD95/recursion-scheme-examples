@@ -42,3 +42,29 @@ repeat = ana f
     f :: a -> ListF a a
     f a = Cons a a
 
+replicate :: Natural -> a -> [a]
+replicate n a = ana (g a) n
+  where
+    g :: a -> Natural -> ListF a Natural
+    g _ 0   = Nil
+    g a' n' = Cons a' (n' - 1)
+
+groupOn :: Eq b => (a -> b) -> [a] -> [[a]]
+groupOn p = ana (f p)
+  where
+    f :: Eq b => (a -> b) -> [a] -> ListF [a] [a]
+    f _ [] = Nil
+    f q (h:t) =
+      let (match, rest) = partition ((==) (q h) . q) t
+      in Cons (h : match) rest
+
+init :: [a] -> [a]
+init = ana f
+  where
+    f :: [a] -> ListF a [a]
+    f as =
+      case project as of
+        Nil       -> Nil
+        Cons _ [] -> Nil
+        Cons x s  -> Cons x s
+

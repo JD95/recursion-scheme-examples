@@ -6,32 +6,19 @@
 
 module Futu where
 
-import           Control.Comonad.Cofree
 import           Control.Monad.Free
+import           Data.Functor.Base     (NonEmptyF (..))
+import qualified Data.Functor.Base     as F
 import           Data.Functor.Foldable
 import           Data.List
-import           Data.Numbers.Primes
-import qualified Data.Tree              as T
+import           Data.List.NonEmpty    (NonEmpty (..))
+import qualified Data.List.NonEmpty    as NE
 import           Numeric.Natural
-import qualified Prelude                as P
-import           Protolude
+import qualified Prelude               as P
+import           Protolude             hiding (tail)
 
--- | Futumorphisms are useful when the recursion needs
---   to look ahead in the structure. They are unfolds
---   that let us expand many layers at once, instead
---   of single layers like a apomorphisms. Using
---   project, we can make use of future values.
--- | Here, we can implement the init function which
---   returns all be the last element of a list.
-futuInit :: [a] -> [a]
-futuInit = futu f
-  where
-    f :: [a] -> ListF a (Free (ListF a) [a])
-    f as =
-      case project as of
-        Nil       -> Nil
-        Cons x [] -> Nil
-        Cons x s  -> Cons x (pure s)
+-- | futu :: Corecursive t => (a -> Base t (Free (Base t) a)) -> a -> t
+
 
 -- | In this example, we extrapolate down the list and
 --   only take the odd elements.
@@ -42,22 +29,19 @@ futuExample = futu f
     f as =
       case project as of
         Nil -> Nil
-        Cons x s ->
-          Cons x $ do
-            pure $
-              case project s of
-                Nil      -> s
-                Cons _ t -> t
+        Cons x s -> Cons x $ pure $
+          case project s of
+            Nil      -> s
+            Cons _ t -> t
 
 -- | An implementation of a memoized list of fibbonaci numbers
-futuFibs :: [Natural]
-futuFibs = futu f [0, 1]
+futuFibs :: NonEmpty Natural
+futuFibs = futu f (0 :| [1])
   where
-    f :: [Natural] -> ListF Natural (Free (ListF Natural) [Natural])
+    f :: NonEmpty Natural -> NonEmptyF Natural (Free (NonEmptyF Natural) (NonEmpty Natural))
     f as =
-      case project as of
-        Cons x s ->
-          Cons x $
-          pure $
-          case project s of
-            Cons y _ -> s ++ [x + y]
+      let p = project as
+      in case F.tail p of
+        Just (t :| _)  ->
+          NonEmptyF (F.head p) . Just . pure $ t :| [F.head p + t]
+        Nothing -> undefined
