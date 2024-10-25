@@ -35,8 +35,8 @@ hyloHanoi = hylo g f
 nonCyclicPathsFrom ::
   forall f a.
   (Ord a) =>
-  (a -> [a]) ->
-  (a -> f a -> f a) ->
+  (Set a -> a -> f a) ->
+  (f a -> f a -> f a) ->
   (f a -> Maybe (a, f a)) ->
   (Set a, f a) ->
   ListF a (Set a, f a)
@@ -45,10 +45,28 @@ nonCyclicPathsFrom neighbors schedule next (seen, nodes) =
     Nothing -> Nil
     Just (this, rest) ->
       Cons this $
-        let prune = filter (`Set.notMember` seen)
-            rest' = foldr schedule rest (prune $ neighbors this)
+        let rest' = schedule (neighbors seen this) rest
             seen' = Set.insert this seen
          in (seen', rest')
+
+traversalPath ::
+  forall a.
+  Ord a =>
+  ([a] -> [a] -> [a]) ->
+  (a -> [a]) ->
+  (a -> [a])
+traversalPath schedule neighbors start =
+  ana (nonCyclicPathsFrom f schedule g) (Set.empty, [start])
+  where
+    f seen this = filter (`Set.notMember` seen) $ neighbors this
+    g [] = Nothing
+    g (x : xs) = Just (x, xs)
+
+depthFirst :: Ord a => (a -> [a]) -> a -> [a]
+depthFirst = traversalPath (<>)
+
+breadthFirst :: Ord a => (a -> [a]) -> a -> [a]
+breadthFirst = traversalPath (flip (<>))
 
 findFirst :: (a -> Bool) -> ListF a (Maybe a) -> Maybe a
 findFirst _ Nil = Nothing
@@ -57,7 +75,7 @@ findFirst p (Cons this continue) =
     then Just this
     else continue
 
-newtype Path a = Path (NonEmpty a)
+newtype Path a = Path {unPath :: NonEmpty a}
 
 instance Eq a => Eq (Path a) where
   (Path x) == (Path y) = x == y
@@ -68,22 +86,24 @@ instance Ord a => Ord (Path a) where
 search ::
   forall f a.
   (Ord a) =>
-  (forall x. x -> f x -> f x) ->
-  (forall x. f x -> Maybe (x, f x)) ->
-  (a -> [a]) ->
+  (Set (Path a) -> Path a -> f (Path a)) ->
+  (f (Path a) -> f (Path a) -> f (Path a)) ->
+  (f (Path a) -> Maybe (Path a, f (Path a))) ->
   (a -> Bool) ->
   (f (Path a) -> Maybe (Path a))
-search schedule next f p =
-  hylo (findFirst isTarget) (nonCyclicPathsFrom progress schedule next) . (,) Set.empty
+search neighbors schedule next p =
+  hylo (findFirst isTarget) (nonCyclicPathsFrom neighbors schedule next) . (,) Set.empty
   where
     isTarget (Path xs) = p $ NE.head xs
 
-    progress :: Path a -> [Path a]
-    progress (Path (x :| xs)) = [Path (n :| (x : xs)) | n <- f x]
+nextL :: Seq a -> Maybe (a, Seq a)
+nextL Empty = Nothing
+nextL (x :<| xs) = Just (x, xs)
 
-nextFront :: Seq a -> Maybe (a, Seq a)
-nextFront Empty = Nothing
-nextFront (x :<| xs) = Just (x, xs)
+progress :: Ord a => (a -> [a]) -> Set (Path a) -> Path a -> Seq (Path a)
+progress f seen (Path (x :| xs)) =
+  Seq.fromList $
+    filter (`Set.notMember` seen) [Path (n :| (x : xs)) | n <- f x]
 
 dfs ::
   forall a.
@@ -91,7 +111,7 @@ dfs ::
   (a -> [a]) ->
   (a -> Bool) ->
   (a -> Maybe (Path a))
-dfs f p = search (Seq.<|) nextFront f p . Seq.singleton . Path . NE.singleton
+dfs f p = search (progress f) (<>) nextL p . Seq.singleton . Path . NE.singleton
 
 bfs ::
   forall a.
@@ -99,4 +119,4 @@ bfs ::
   (a -> [a]) ->
   (a -> Bool) ->
   (a -> Maybe (Path a))
-bfs f p = search (flip (Seq.|>)) nextFront f p . Seq.singleton . Path . NE.singleton
+bfs f p = search (progress f) (flip (<>)) nextL p . Seq.singleton . Path . NE.singleton
