@@ -11,6 +11,8 @@ import Data.Functor.Foldable
 import Data.List
 import Data.Maybe (fromMaybe)
 import Data.Numbers.Primes
+import Data.Set (Set)
+import qualified Data.Set as Set
 import Numeric.Natural
 
 -- | Anamorphisms are simple unfolds.
@@ -67,3 +69,39 @@ init = ana f
         Nil -> Nil
         Cons _ [] -> Nil
         Cons x s -> Cons x s
+
+traversalPathF ::
+  forall f a.
+  (Ord a) =>
+  (Set a -> a -> f a) ->
+  (f a -> f a -> f a) ->
+  (f a -> Maybe (a, f a)) ->
+  (Set a, f a) ->
+  ListF a (Set a, f a)
+traversalPathF neighbors schedule next (seen, nodes) =
+  case next nodes of
+    Nothing -> Nil
+    Just (this, rest) ->
+      Cons this $
+        let rest' = schedule (neighbors seen this) rest
+            seen' = Set.insert this seen
+         in (seen', rest')
+
+traversalPath ::
+  forall a.
+  Ord a =>
+  ([a] -> [a] -> [a]) ->
+  (a -> [a]) ->
+  (a -> [a])
+traversalPath schedule neighbors start =
+  ana (traversalPathF f schedule g) (Set.empty, [start])
+  where
+    f seen this = filter (`Set.notMember` seen) $ neighbors this
+    g [] = Nothing
+    g (x : xs) = Just (x, xs)
+
+depthFirst :: Ord a => (a -> [a]) -> a -> [a]
+depthFirst = traversalPath (<>)
+
+breadthFirst :: Ord a => (a -> [a]) -> a -> [a]
+breadthFirst = traversalPath (flip (<>))

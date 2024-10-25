@@ -8,9 +8,25 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 
-module Hylo where
+module Hylo
+  ( -- * Hylomorphisms
 
+    -- | This scheme fuses an Algebra and a Co-Algebra into
+    -- a single algorithm without actually fully generating
+    -- the intermediate structure.
+    hanoi,
+
+    -- ** Searching
+    search,
+    Path (..),
+    dfs,
+    bfs,
+  )
+where
+
+import Ana
 import BinTree
+import Cata
 import Data.Functor.Foldable
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NE
@@ -22,58 +38,53 @@ import qualified Data.Set as Set
 -- | The moves for the towers of hanoi can be represented
 --   as a hylo morphism. The anamorphism builds up the tree
 --   and the catamorphism tears down the tree into a list.
-hyloHanoi :: Int -> [Int]
-hyloHanoi = hylo g f
+hanoi :: Int -> [Int]
+hanoi = hylo g f
   where
     f :: Int -> BinTreeF Int Int
     f 1 = BinLeafF 1
     f n = BinNodeF n (n - 1) (n - 1)
+
     g :: BinTreeF Int [Int] -> [Int]
     g (BinLeafF n) = [n]
     g (BinNodeF n l r) = l ++ [n] ++ r
 
-nonCyclicPathsFrom ::
+-- | Search algorithms over some graph
+--   Here we can reuse `traversalPathF` and `findFirstF`
+--   and fuse the two together, running the search without
+--   generating the entire traversal first
+search ::
   forall f a.
   (Ord a) =>
+  -- | Produce neighbors for the current node
+  -- with the context of nodes seen before
   (Set a -> a -> f a) ->
-  (f a -> f a -> f a) ->
+  -- | From the schedule of nodes to visit
+  -- pop off the next one
   (f a -> Maybe (a, f a)) ->
-  (Set a, f a) ->
-  ListF a (Set a, f a)
-nonCyclicPathsFrom neighbors schedule next (seen, nodes) =
-  case next nodes of
-    Nothing -> Nil
-    Just (this, rest) ->
-      Cons this $
-        let rest' = schedule (neighbors seen this) rest
-            seen' = Set.insert this seen
-         in (seen', rest')
+  -- | Given a new batch of nodes to visit
+  -- add them to the current schedule
+  (f a -> f a -> f a) ->
+  -- | Predicate for the target node
+  (a -> Bool) ->
+  (f a -> Maybe a)
+search neighbors next schedule isTarget =
+  hylo (findFirstF isTarget) (traversalPathF neighbors schedule next) . (,) Set.empty
 
-traversalPath ::
+sequenceSearch ::
   forall a.
-  Ord a =>
-  ([a] -> [a] -> [a]) ->
+  (Ord a) =>
   (a -> [a]) ->
-  (a -> [a])
-traversalPath schedule neighbors start =
-  ana (nonCyclicPathsFrom f schedule g) (Set.empty, [start])
+  (Seq a -> Seq a -> Seq a) ->
+  (a -> Bool) ->
+  (a -> Maybe a)
+sequenceSearch neighbors schedule isTarget start =
+  search f g schedule isTarget (Seq.singleton start)
   where
-    f seen this = filter (`Set.notMember` seen) $ neighbors this
-    g [] = Nothing
-    g (x : xs) = Just (x, xs)
+    f seen this = Seq.fromList . filter (`Set.notMember` seen) $ neighbors this
 
-depthFirst :: Ord a => (a -> [a]) -> a -> [a]
-depthFirst = traversalPath (<>)
-
-breadthFirst :: Ord a => (a -> [a]) -> a -> [a]
-breadthFirst = traversalPath (flip (<>))
-
-findFirst :: (a -> Bool) -> ListF a (Maybe a) -> Maybe a
-findFirst _ Nil = Nothing
-findFirst p (Cons this continue) =
-  if p this
-    then Just this
-    else continue
+    g Empty = Nothing
+    g (x :<| xs) = Just (x, xs)
 
 newtype Path a = Path {unPath :: NonEmpty a}
 
@@ -83,27 +94,18 @@ instance Eq a => Eq (Path a) where
 instance Ord a => Ord (Path a) where
   (Path x) <= (Path y) = x < y
 
-search ::
-  forall f a.
+pathSearch ::
+  forall a.
   (Ord a) =>
-  (Set (Path a) -> Path a -> f (Path a)) ->
-  (f (Path a) -> f (Path a) -> f (Path a)) ->
-  (f (Path a) -> Maybe (Path a, f (Path a))) ->
+  (Seq (Path a) -> Seq (Path a) -> Seq (Path a)) ->
+  (a -> [a]) ->
   (a -> Bool) ->
-  (f (Path a) -> Maybe (Path a))
-search neighbors schedule next p =
-  hylo (findFirst isTarget) (nonCyclicPathsFrom neighbors schedule next) . (,) Set.empty
-  where
-    isTarget (Path xs) = p $ NE.head xs
+  (a -> Maybe (Path a))
+pathSearch schedule f p =
+  sequenceSearch (pathToNeighbors f) schedule (p . NE.head . unPath) . Path . NE.singleton
 
-nextL :: Seq a -> Maybe (a, Seq a)
-nextL Empty = Nothing
-nextL (x :<| xs) = Just (x, xs)
-
-progress :: Ord a => (a -> [a]) -> Set (Path a) -> Path a -> Seq (Path a)
-progress f seen (Path (x :| xs)) =
-  Seq.fromList $
-    filter (`Set.notMember` seen) [Path (n :| (x : xs)) | n <- f x]
+pathToNeighbors :: Ord a => (a -> [a]) -> Path a -> [Path a]
+pathToNeighbors f (Path (x :| xs)) = [Path (n :| (x : xs)) | n <- f x]
 
 dfs ::
   forall a.
@@ -111,7 +113,7 @@ dfs ::
   (a -> [a]) ->
   (a -> Bool) ->
   (a -> Maybe (Path a))
-dfs f p = search (progress f) (<>) nextL p . Seq.singleton . Path . NE.singleton
+dfs = pathSearch (<>)
 
 bfs ::
   forall a.
@@ -119,4 +121,4 @@ bfs ::
   (a -> [a]) ->
   (a -> Bool) ->
   (a -> Maybe (Path a))
-bfs f p = search (progress f) (flip (<>)) nextL p . Seq.singleton . Path . NE.singleton
+bfs = pathSearch (flip (<>))
