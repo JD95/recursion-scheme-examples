@@ -28,6 +28,7 @@ library
     , comonad
     , containers
     , free
+    , mtl
     , primes
     , protolude
     , recursion-schemes
@@ -39,8 +40,8 @@ library
       Ana
       Apo
       Gapo
+      BinTree
       Futu
-      Utilities
   other-modules:
       Hylo
       Paths_recursion
