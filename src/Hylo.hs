@@ -38,16 +38,16 @@ import qualified Data.Set as Set
 -- | The moves for the towers of hanoi can be represented
 --   as a hylo morphism. The anamorphism builds up the tree
 --   and the catamorphism tears down the tree into a list.
-hanoi :: Int -> [Int]
+hanoi :: Int -> Seq Int
 hanoi = hylo g f
   where
     f :: Int -> BinTreeF Int Int
     f 1 = BinLeafF 1
     f n = BinNodeF n (n - 1) (n - 1)
 
-    g :: BinTreeF Int [Int] -> [Int]
-    g (BinLeafF n) = [n]
-    g (BinNodeF n l r) = l ++ [n] ++ r
+    g :: BinTreeF Int (Seq Int) -> (Seq Int)
+    g (BinLeafF n) = Seq.singleton n
+    g (BinNodeF n l r) = (l :|> n) <> r
 
 -- | Search algorithms over some graph
 --   Here we can reuse `traversalPathF` and `findFirstF`
